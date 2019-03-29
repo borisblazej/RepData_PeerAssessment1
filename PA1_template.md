@@ -6,7 +6,8 @@ output:
     keep_md: true
 ---
 
-For the project we need some libraries and we want to suppress warnings
+For the project we need some libraries 
+
 
 ```r
 library(readr)
@@ -76,10 +77,11 @@ We calculate the total number of steps by day and draw a histogram:
 daily <- activity %>%
     group_by(date) %>%
     summarise(total_steps = sum(steps, na.rm = TRUE))
-hist(daily$total_steps, main = "Total Number of Steps per Day")
+hist(daily$total_steps, breaks = 10,
+     main = "Total Number of Steps per Day")
 ```
 
-![](PA1_template_files/figure-html/unnamed-chunk-4-1.png)<!-- -->
+![](PA1_template_files/figure-html/histogram1-1.png)<!-- -->
 
 
 ```r
@@ -107,7 +109,7 @@ The mean total number of steps taken per day is **9354**, the median is at **103
 
 ## What is the average daily activity pattern?
 
-Averaging steps per intervall over all available days shows us the average acticity pattern:
+Averaging steps per intervall over all available days shows us the average activity pattern:
 
 
 ```r
@@ -117,7 +119,7 @@ pattern <- activity %>%
 with(pattern, plot(x=interval, y = avg_steps, type = "l"))
 ```
 
-![](PA1_template_files/figure-html/unnamed-chunk-6-1.png)<!-- -->
+![](PA1_template_files/figure-html/pattern-1.png)<!-- -->
 
 
 ```r
@@ -132,11 +134,99 @@ most_act
 ## 1      835      206.
 ```
 
-The most active interval is the one at **835** seconds with ~**206**.
+The most active interval is the one at **835** seconds with ~**206 steps**.
 
 
 ## Imputing missing values
 
+To fill NA gaps we will replace them by the mean of the respective interval, which we have already available as the "overall activity pattern" (variable: pattern).
+
+
+
+```r
+activity1 <- activity
+
+for(r in 1:nrow(activity1)){
+    if(is.na(activity1$steps[r])) {
+        activity1$steps[r] <- 
+            pattern[which(pattern$interval == activity1$interval[r]),]$avg_steps
+    }
+}
+
+sum(is.na(activity1$steps))
+```
+
+```
+## [1] 0
+```
+
+The new data set doe not contain NA's anymore. So we draw again a histogram ...
+
+
+```r
+daily1 <- activity1 %>%
+    group_by(date) %>%
+    summarise(total_steps = sum(steps, na.rm = TRUE))
+hist(daily1$total_steps, breaks = 10,
+     main = "Total Number of Steps per Day")
+```
+
+![](PA1_template_files/figure-html/histogram2-1.png)<!-- -->
+
+... and calculate mean and median:
+
+
+
+```r
+mtns1 <- mean(daily1$total_steps)
+mtns1
+```
+
+```
+## [1] 10766.19
+```
+
+```r
+medtns1 <- median(daily1$total_steps)
+medtns1
+```
+
+```
+## [1] 10766.19
+```
+
+The mean total number of steps taken per day is **10766**, the median is at **10766**.
+
+
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+First we caclulate the day and whether it is a weekday or weekend and reproduce the activity pattern for each:
+
+
+```r
+activity1 <- activity1 %>%
+    mutate(day = weekdays(date), 
+           daytype = ifelse(day %in% c("Montag", "Dienstag",
+                                       "Mittwoch", "Donnerstag",
+                                       "Freitag"), 
+                            "weekday", "weekend"))
+
+pattern1 <- activity1 %>%
+    group_by(interval, daytype) %>%
+    summarise(avg_steps = mean(steps, na.rm = TRUE))
+```
+
+Finally, we plot the different patterns:
+
+
+```r
+ggplot(data = pattern1, aes(interval, avg_steps)) +
+    geom_line()  +
+    facet_grid(daytype ~ .)
+```
+
+![](PA1_template_files/figure-html/weekday_pattern-1.png)<!-- -->
+
+
